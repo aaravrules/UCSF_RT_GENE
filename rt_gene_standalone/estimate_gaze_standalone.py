@@ -39,6 +39,10 @@ def extract_eye_image_patches(subjects):
 
 
 def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
+    # AARAV: setting default degree_l and degree_r to 200 as that is outside range and would be returned if there are some errors finding angles.
+    # end is used to break in between video processing.
+    degree_l, degree_r = 200, 200
+    end = False
     faceboxes = landmark_estimator.get_face_bb(color_img)
     if len(faceboxes) == 0:
         tqdm.write('Could not find faces in the image')
@@ -108,14 +112,19 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
     for subject_id, gaze, headpose in zip(valid_subject_list, gaze_est.tolist(), input_head_list):
         subject = subjects[subject_id]
         # Build visualizations
-        r_gaze_img = gaze_estimator.visualize_eye_result(subject.right_eye_color, gaze)
-        l_gaze_img = gaze_estimator.visualize_eye_result(subject.left_eye_color, gaze)
+        r_gaze_img, degree_r = gaze_estimator.visualize_eye_result(subject.right_eye_color, gaze)
+        l_gaze_img, degree_l = gaze_estimator.visualize_eye_result(subject.left_eye_color, gaze)
         s_gaze_img = np.concatenate((r_gaze_img, l_gaze_img), axis=1)
 
         if args.vis_gaze:
-            plt.axis("off")
-            plt.imshow(cv2.cvtColor(s_gaze_img, cv2.COLOR_BGR2RGB))
-            plt.show()
+            # plt.axis("off")
+            # plt.imshow(cv2.cvtColor(s_gaze_img, cv2.COLOR_BGR2RGB))
+            # plt.show()
+            #AARAV: Changed plt show to opencv, and if q is pressed in between then end set to true to break processing
+            cv2.imshow('res', s_gaze_img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                end = True
+                break
 
         if args.save_gaze:
             # add subject_id to cope with multiple persons in one image
@@ -128,12 +137,15 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
             with open(os.path.join(args.output_path, os.path.splitext(base_name)[0] + '_output_%s.txt'%(subject_id)), 'w+') as f:
                 f.write(os.path.splitext(base_name)[0] + ', [' + str(headpose[1]) + ', ' + str(headpose[0]) + ']' +
                         ', [' + str(gaze[1]) + ', ' + str(gaze[0]) + ']' + '\n')
+    
+    # AARAV: returning degrees and end flag
+    return degree_l, degree_r, end
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Estimate gaze from images')
-    parser.add_argument('im_path', type=str, default=os.path.abspath(os.path.join(script_path, './samples_gaze/')),
-                        nargs='?', help='Path to an image or a directory containing images')
+    #AARAV: Changed argument to take video path.
+    parser.add_argument('--video_path', type=str, help='Path to video')
     parser.add_argument('--calib-file', type=str, dest='calib_file', default=None, help='Camera calibration file')
     parser.add_argument('--vis-headpose', dest='vis_headpose', action='store_true', help='Display the head pose images')
     parser.add_argument('--no-vis-headpose', dest='vis_headpose', action='store_false', help='Do not display the head pose images')
@@ -159,18 +171,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    image_path_list = []
-    if os.path.isfile(args.im_path):
-        image_path_list.append(os.path.split(args.im_path)[1])
-        args.im_path = os.path.split(args.im_path)[0]
-    elif os.path.isdir(args.im_path):
-        for image_file_name in sorted(os.listdir(args.im_path)):
-            if image_file_name.lower().endswith('.jpg') or image_file_name.lower().endswith('.png') or image_file_name.lower().endswith('.jpeg'):
-                if '_gaze' not in image_file_name and '_headpose' not in image_file_name:
-                    image_path_list.append(image_file_name)
-    else:
-        tqdm.write('Provide either a path to an image or a path to a directory containing images')
-        sys.exit(1)
+    # image_path_list = []
+    # if os.path.isfile(args.im_path):
+    #     image_path_list.append(os.path.split(args.im_path)[1])
+    #     args.im_path = os.path.split(args.im_path)[0]
+    # elif os.path.isdir(args.im_path):
+    #     for image_file_name in sorted(os.listdir(args.im_path)):
+    #         if image_file_name.lower().endswith('.jpg') or image_file_name.lower().endswith('.png') or image_file_name.lower().endswith('.jpeg'):
+    #             if '_gaze' not in image_file_name and '_headpose' not in image_file_name:
+    #                 image_path_list.append(image_file_name)
+    # else:
+    #     tqdm.write('Provide either a path to an image or a path to a directory containing images')
+    #     sys.exit(1)
 
     tqdm.write('Loading networks')
     landmark_estimator = LandmarkMethodBase(device_id_facedetection=args.device_id_facedetection,
@@ -193,19 +205,55 @@ if __name__ == '__main__':
     if not os.path.isdir(args.output_path):
         os.makedirs(args.output_path)
 
-    for image_file_name in tqdm(image_path_list):
-        tqdm.write('Estimate gaze on ' + image_file_name)
-        image = cv2.imread(os.path.join(args.im_path, image_file_name))
-        if image is None:
-            tqdm.write('Could not load ' + image_file_name + ', skipping this image.')
-            continue
+    # for image_file_name in tqdm(image_path_list):
+    #AARAV: initializing video capture
+    cap = cv2.VideoCapture(args.video_path)
+    i = 0
+    # AARAV: Creating arrays for plots
+    x, y_l, y_r = [], [], []
+    while True:
+        # AARAV: Reading from video
+        ret, image = cap.read()
+        if ret:
+            if i > 100 :
+                break
 
-        if args.calib_file is not None:
-            _dist_coefficients, _camera_matrix = load_camera_calibration(args.calib_file)
+            print('Estimate gaze on frame number ', str(i))
+            x.append(i)
+            i += 1
+            # image = cv2.imread(os.path.join(args.im_path, image_file_name))
+            # if image is None:
+            #     tqdm.write('Could not load ' + image_file_name + ', skipping this image.')
+            #     continue
+
+            if args.calib_file is not None:
+                _dist_coefficients, _camera_matrix = load_camera_calibration(args.calib_file)
+            else:
+                im_width, im_height = image.shape[1], image.shape[0]
+                tqdm.write('WARNING!!! You should provide the camera calibration file, otherwise you might get bad results. Using a crude approximation!')
+                _dist_coefficients, _camera_matrix = np.zeros((1, 5)), np.array(
+                    [[im_height, 0.0, im_width / 2.0], [0.0, im_height, im_height / 2.0], [0.0, 0.0, 1.0]])
+
+            dl, dr, end = estimate_gaze(str(i), image, _dist_coefficients, _camera_matrix)
+            # AARAV: Adding degrees to their respective lists
+            y_l.append(dl)
+            y_r.append(dr)
+            if end:
+                break
         else:
-            im_width, im_height = image.shape[1], image.shape[0]
-            tqdm.write('WARNING!!! You should provide the camera calibration file, otherwise you might get bad results. Using a crude approximation!')
-            _dist_coefficients, _camera_matrix = np.zeros((1, 5)), np.array(
-                [[im_height, 0.0, im_width / 2.0], [0.0, im_height, im_height / 2.0], [0.0, 0.0, 1.0]])
+            break
+cv2.destroyAllWindows()
 
-        estimate_gaze(image_file_name, image, _dist_coefficients, _camera_matrix)
+#AARAV: Drawing using simple plots of matplotlib
+plt.figure()
+plt.plot(x, y_l)
+plt.xlabel("Frame number")
+plt.ylabel("Degrees")
+plt.title("Left eye")  
+
+plt.figure()
+plt.plot(x, y_r)
+plt.xlabel("Frame number")
+plt.ylabel("Degrees")
+plt.title("Right eye") 
+plt.show()

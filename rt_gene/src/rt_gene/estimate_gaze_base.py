@@ -2,11 +2,23 @@
 
 import os
 import cv2
+import math
 import numpy as np
 from tqdm import tqdm
 
 from rt_gene.gaze_tools import get_endpoint
 
+
+
+#AARAV - function to obtain angle of the line points
+def getAngleBetweenPoints(x_orig, y_orig, x_landmark, y_landmark):
+    deltaY = y_landmark - y_orig
+    deltaX = x_landmark - x_orig
+    return math.degrees(math.atan2(deltaY, deltaX))
+    #AARAV - We can comment line above & uncomment this line to get angle between 0 to 360 degrees
+    # return (math.degrees(math.atan2(deltaY, deltaX)) + 360) % 360 # do this for 0 to 360
+    
+    
 
 class GazeEstimatorBase(object):
     """This class encapsulates a deep neural network for gaze estimation.
@@ -46,5 +58,14 @@ class GazeEstimatorBase(object):
 
         endpoint_x, endpoint_y = get_endpoint(est_gaze[0], est_gaze[1], center_x, center_y, 50)
 
+        #AARAV - calling getAngleBetweenpoints - This function return angle betwee -180 to 180 degrees
+        degree_angle = getAngleBetweenPoints(center_x, center_y, endpoint_x, endpoint_y)   
+        tqdm.write('__________-------------- Degree '+str(degree_angle))
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        # Adding angle value on the image
+        cv2.putText(output_image, str(degree_angle), (int(endpoint_x), int(endpoint_y)), font, .4, 255, 1, cv2.LINE_AA)
+        
         cv2.line(output_image, (int(center_x), int(center_y)), (int(endpoint_x), int(endpoint_y)), (255, 0, 0))
-        return output_image
+
+        #AARAV also return the degree
+        return output_image, degree_angle
