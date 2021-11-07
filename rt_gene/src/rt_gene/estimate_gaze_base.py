@@ -6,7 +6,8 @@ import math
 import numpy as np
 from tqdm import tqdm
 
-from rt_gene.gaze_tools import get_endpoint
+
+from . gaze_tools import get_endpoint, get_euler_from_phi_theta
 
 
 
@@ -56,16 +57,33 @@ class GazeEstimatorBase(object):
         center_x = output_image.shape[1] / 2
         center_y = output_image.shape[0] / 2
 
-        endpoint_x, endpoint_y = get_endpoint(est_gaze[0], est_gaze[1], center_x, center_y, 50)
+        endpoint_x, endpoint_y = get_endpoint(est_gaze[0], est_gaze[1], center_x, center_y, 50) # est_gaze[0]=theta, est_gaze[1]=pie hjsong
 
         #AARAV - calling getAngleBetweenpoints - This function return angle betwee -180 to 180 degrees
-        degree_angle = getAngleBetweenPoints(center_x, center_y, endpoint_x, endpoint_y)   
-        tqdm.write('__________-------------- Degree '+str(degree_angle))
+        #degree_angle = getAngleBetweenPoints(center_x, center_y, endpoint_x, endpoint_y)   
+        #tqdm.write('__________-------------- Degree '+str(degree_angle))
+
+        #hjsong  
+        tqdm.write('__________-------------- Gaze Degree (in theta pie) '+str(est_gaze) )
+        theta = est_gaze[0]
+        phi = est_gaze[1]
+
+        Degrees=get_euler_from_phi_theta(phi, theta)
+        #roll pitch yaw
+        E_Degrees = [0,0,0]
+        E_Degrees[0] = -math.degrees(math.asin(math.sin(Degrees[0]))) #roll
+        E_Degrees[1] = math.degrees(math.asin(math.sin(Degrees[1])))  #pitch
+        E_Degrees[2] = math.degrees(math.asin(math.sin(Degrees[2])))  #yaw
+
+        tqdm.write('__________-------------- Gaze Degree (in euler angles) '+str(E_Degrees) )
+        #hjsong
+
         font = cv2.FONT_HERSHEY_SIMPLEX
         # Adding angle value on the image
-        cv2.putText(output_image, str(degree_angle), (int(endpoint_x), int(endpoint_y)), font, .4, 255, 1, cv2.LINE_AA)
+        #cv2.putText(output_image, str(degree_angle), (int(endpoint_x), int(endpoint_y)), font, .4, 255, 1, cv2.LINE_AA)
         
         cv2.line(output_image, (int(center_x), int(center_y)), (int(endpoint_x), int(endpoint_y)), (255, 0, 0))
 
         #AARAV also return the degree
-        return output_image, degree_angle
+        #return output_image, degree_angle
+        return output_image, E_Degrees[2]  #hjsong  yaw  @Aarav, you can try others like E_Degrees[0], E_Degrees[1] to see if it does make a sense

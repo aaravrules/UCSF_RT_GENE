@@ -7,14 +7,17 @@ import torchvision.transforms as transforms
 from torch.backends import cudnn as cudnn
 from tqdm import tqdm
 
-from rt_gene.download_tools import download_external_landmark_models
+# hjsong I did this for debugging in VS code
+#from rt_gene.download_tools import download_external_landmark_models
+from . download_tools import download_external_landmark_models  #hjsong
 
 # noinspection PyUnresolvedReferences
-from rt_gene import gaze_tools as gaze_tools
-from rt_gene.SFD.sfd_detector import SFDDetector
-from rt_gene.ThreeDDFA.ddfa import ToTensorGjz, NormalizeGjz
-from rt_gene.ThreeDDFA.inference import crop_img, predict_68pts, parse_roi_box_from_bbox, parse_roi_box_from_landmark
-from rt_gene.tracker_generic import TrackedSubject
+#from rt_gene import gaze_tools as gaze_tools
+from . import gaze_tools as gaze_tools
+from . SFD.sfd_detector import SFDDetector
+from . ThreeDDFA.ddfa import ToTensorGjz, NormalizeGjz
+from . ThreeDDFA.inference import crop_img, predict_68pts, parse_roi_box_from_bbox, parse_roi_box_from_landmark
+from . tracker_generic import TrackedSubject
 
 facial_landmark_transform = transforms.Compose([ToTensorGjz(), NormalizeGjz(mean=127.5, std=128)])
 
@@ -36,7 +39,7 @@ class LandmarkMethodBase(object):
         self.model_points = self.get_full_model_points(model_points_file)
 
     def load_face_landmark_model(self, checkpoint_fp=None):
-        import rt_gene.ThreeDDFA.mobilenet_v1 as mobilenet_v1
+        from . ThreeDDFA import mobilenet_v1 as mobilenet_v1
         if checkpoint_fp is None:
             import rospkg
             checkpoint_fp = rospkg.RosPack().get_path('rt_gene') + '/model_nets/phase1_wpdc_vdc.pth.tar'

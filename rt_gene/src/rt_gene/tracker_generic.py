@@ -8,8 +8,8 @@ from __future__ import print_function
 
 import cv2
 import numpy as np
-
-from rt_gene.gaze_tools import get_normalised_eye_landmarks
+# hjsong I did this for debugging in VS code
+from .gaze_tools import get_normalised_eye_landmarks
 
 
 class TrackedSubject(object):

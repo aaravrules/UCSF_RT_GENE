@@ -7,9 +7,9 @@ import torch
 from torchvision import transforms
 from tqdm import tqdm
 
-from rt_gene.estimate_gaze_base import GazeEstimatorBase
-from rt_gene.gaze_estimation_models_pytorch import GazeEstimationModelVGG, GazeEstimationModelResnet18
-from rt_gene.download_tools import download_gaze_pytorch_models, md5
+from . estimate_gaze_base import GazeEstimatorBase
+from . gaze_estimation_models_pytorch import GazeEstimationModelVGG, GazeEstimationModelResnet18
+from . download_tools import download_gaze_pytorch_models, md5
 
 
 class GazeEstimator(GazeEstimatorBase):

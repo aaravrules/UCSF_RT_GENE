@@ -7,15 +7,17 @@ from __future__ import print_function, division, absolute_import
 import argparse
 import os
 import sys
+import math
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from rt_gene.extract_landmarks_method_base import LandmarkMethodBase
-from rt_gene.gaze_tools import get_phi_theta_from_euler, limit_yaw
-from rt_gene.gaze_tools_standalone import euler_from_matrix
+# hjsong I did this for debugging in VS code
+from ..rt_gene.src.rt_gene.extract_landmarks_method_base import LandmarkMethodBase
+from ..rt_gene.src.rt_gene.gaze_tools import get_phi_theta_from_euler, limit_yaw
+from ..rt_gene.src.rt_gene.gaze_tools_standalone import euler_from_matrix
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -81,9 +83,18 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
                           [0.0, -1.0, 0.0, 0.0],
                           [0.0, 0.0, 0.0, 1.0]]
         roll_pitch_yaw = list(euler_from_matrix(np.dot(_camera_to_ros, _m)))
-        roll_pitch_yaw = limit_yaw(roll_pitch_yaw)
+        roll_pitch_yaw = limit_yaw(roll_pitch_yaw)  #hjsong
+
+        roll_pitch_yaw[0] = -math.degrees(math.asin(math.sin(roll_pitch_yaw[0]))) 
+        roll_pitch_yaw[1] = math.degrees(math.asin(math.sin(roll_pitch_yaw[1])))
+        roll_pitch_yaw[2] = math.degrees(math.asin(math.sin(roll_pitch_yaw[2])))
+
+
+        print ("pitch roll yaw" + f'{roll_pitch_yaw[1]:5.2f}' + "  " + f'{roll_pitch_yaw[0]:5.2f}' + " " + f'{roll_pitch_yaw[2]:5.2f}')  # pitch roll yaw
+         
 
         phi_head, theta_head = get_phi_theta_from_euler(roll_pitch_yaw)
+        print ("phi_head, theta_head", phi_head, theta_head)
 
         face_image_resized = cv2.resize(subject.face_color, dsize=(224, 224), interpolation=cv2.INTER_CUBIC)
         head_pose_image = landmark_estimator.visualize_headpose_result(face_image_resized, (phi_head, theta_head))
@@ -192,11 +203,10 @@ if __name__ == '__main__':
                                             model_points_file=os.path.abspath(os.path.join(script_path, "../rt_gene/model_nets/face_model_68.txt")))
 
     if args.gaze_backend == "tensorflow":
-        from rt_gene.estimate_gaze_tensorflow import GazeEstimator
-
+        from .. rt_gene.src.rt_gene.estimate_gaze_tensorflow import GazeEstimator
         gaze_estimator = GazeEstimator("/gpu:0", args.models)
     elif args.gaze_backend == "pytorch":
-        from rt_gene.estimate_gaze_pytorch import GazeEstimator
+        from .. rt_gene.src.rt_gene.estimate_gaze_pytorch import GazeEstimator
 
         gaze_estimator = GazeEstimator("cuda:0", args.models)
     else:
@@ -215,7 +225,7 @@ if __name__ == '__main__':
         # AARAV: Reading from video
         ret, image = cap.read()
         if ret:
-            if i > 100 :
+            if i > 700 :  #hjsong
                 break
 
             print('Estimate gaze on frame number ', str(i))
@@ -245,6 +255,8 @@ if __name__ == '__main__':
 cv2.destroyAllWindows()
 
 #AARAV: Drawing using simple plots of matplotlib
+
+
 plt.figure()
 plt.plot(x, y_l)
 plt.xlabel("Frame number")
@@ -257,3 +269,6 @@ plt.xlabel("Frame number")
 plt.ylabel("Degrees")
 plt.title("Right eye") 
 plt.show()
+
+
+    

@@ -4,8 +4,9 @@ import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
 
-from rt_gene.estimate_gaze_base import GazeEstimatorBase
-from rt_gene.download_tools import download_gaze_tensorflow_models
+# hjsong I did this for debugging in VS code
+from .estimate_gaze_base import GazeEstimatorBase
+from .download_tools import download_gaze_tensorflow_models
 
 
 class GazeEstimator(GazeEstimatorBase):
