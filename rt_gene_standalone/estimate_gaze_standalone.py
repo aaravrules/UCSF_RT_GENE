@@ -24,6 +24,8 @@ from ..rt_gene.src.rt_gene.gaze_tools_standalone import euler_from_matrix
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 
+yaw_pitch_roll_lst = []
+
 
 def load_camera_calibration(calibration_file):
     import yaml
@@ -91,12 +93,20 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
         roll_pitch_yaw = list(euler_from_matrix(np.dot(_camera_to_ros, _m)))
         roll_pitch_yaw = limit_yaw(roll_pitch_yaw)  #hjsong
 
+        tmpList = []
+
         roll_pitch_yaw[0] = -math.degrees(math.asin(math.sin(roll_pitch_yaw[0]))) 
         roll_pitch_yaw[1] = math.degrees(math.asin(math.sin(roll_pitch_yaw[1])))
         roll_pitch_yaw[2] = math.degrees(math.asin(math.sin(roll_pitch_yaw[2])))
 
 
         print ("pitch roll yaw " + f'{roll_pitch_yaw[1]:5.2f}' + "  " + f'{roll_pitch_yaw[0]:5.2f}' + " " + f'{roll_pitch_yaw[2]:5.2f}')  # pitch roll yaw
+        tmpList.append(base_name)
+        tmpList.append(roll_pitch_yaw[2])
+        tmpList.append(roll_pitch_yaw[1])
+        tmpList.append(roll_pitch_yaw[0])
+        yaw_pitch_roll_lst.append(tmpList)
+
          
 
         phi_head, theta_head = get_phi_theta_from_euler(roll_pitch_yaw)
@@ -268,9 +278,12 @@ if __name__ == '__main__':
 cv2.destroyAllWindows()
 
 #AARAV: Drawing using simple plots of matplotlib
+yaw_pitch_roll_lst
 
-lst = []
+df = pd.DataFrame(yaw_pitch_roll_lst, columns=['Frame #', 'Yaw', 'Pitch', 'Roll'])
+df.to_csv('Eye_Gaze_Euler_Angles.csv', index=False)
 
+'''
 for i in range(len(yaw_l)): 
     newLst = []
     newLst.append(i+1)
@@ -284,6 +297,7 @@ for i in range(len(yaw_l)):
 df = pd.DataFrame(lst, columns=['Frame #', 'Yaw', 'Pitch', 'Roll'])
 #print(df)
 df.to_csv('Gaze_Euler_Angles.csv', index=False)
+'''
 
 plt.figure()
 plt.plot(x, yaw_l)
