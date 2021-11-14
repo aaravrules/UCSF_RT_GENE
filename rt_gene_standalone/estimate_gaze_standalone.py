@@ -14,6 +14,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+import pandas as pd
+import openpyxl
+
 # hjsong I did this for debugging in VS code
 from ..rt_gene.src.rt_gene.extract_landmarks_method_base import LandmarkMethodBase
 from ..rt_gene.src.rt_gene.gaze_tools import get_phi_theta_from_euler, limit_yaw
@@ -43,7 +46,10 @@ def extract_eye_image_patches(subjects):
 def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
     # AARAV: setting default degree_l and degree_r to 200 as that is outside range and would be returned if there are some errors finding angles.
     # end is used to break in between video processing.
-    degree_l, degree_r = 200, 200
+    #degree_l, degree_r = 200, 200
+
+    degrees_l, degrees_r= [],[]
+
     end = False
     faceboxes = landmark_estimator.get_face_bb(color_img)
     if len(faceboxes) == 0:
@@ -90,11 +96,11 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
         roll_pitch_yaw[2] = math.degrees(math.asin(math.sin(roll_pitch_yaw[2])))
 
 
-        print ("pitch roll yaw" + f'{roll_pitch_yaw[1]:5.2f}' + "  " + f'{roll_pitch_yaw[0]:5.2f}' + " " + f'{roll_pitch_yaw[2]:5.2f}')  # pitch roll yaw
+        print ("pitch roll yaw " + f'{roll_pitch_yaw[1]:5.2f}' + "  " + f'{roll_pitch_yaw[0]:5.2f}' + " " + f'{roll_pitch_yaw[2]:5.2f}')  # pitch roll yaw
          
 
         phi_head, theta_head = get_phi_theta_from_euler(roll_pitch_yaw)
-        print ("phi_head, theta_head", phi_head, theta_head)
+        #print ("phi_head, theta_head", phi_head, theta_head)
 
         face_image_resized = cv2.resize(subject.face_color, dsize=(224, 224), interpolation=cv2.INTER_CUBIC)
         head_pose_image = landmark_estimator.visualize_headpose_result(face_image_resized, (phi_head, theta_head))
@@ -123,8 +129,8 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
     for subject_id, gaze, headpose in zip(valid_subject_list, gaze_est.tolist(), input_head_list):
         subject = subjects[subject_id]
         # Build visualizations
-        r_gaze_img, degree_r = gaze_estimator.visualize_eye_result(subject.right_eye_color, gaze)
-        l_gaze_img, degree_l = gaze_estimator.visualize_eye_result(subject.left_eye_color, gaze)
+        r_gaze_img, degrees_r = gaze_estimator.visualize_eye_result(subject.right_eye_color, gaze)
+        l_gaze_img, degrees_l = gaze_estimator.visualize_eye_result(subject.left_eye_color, gaze)
         s_gaze_img = np.concatenate((r_gaze_img, l_gaze_img), axis=1)
 
         if args.vis_gaze:
@@ -150,7 +156,7 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
                         ', [' + str(gaze[1]) + ', ' + str(gaze[0]) + ']' + '\n')
     
     # AARAV: returning degrees and end flag
-    return degree_l, degree_r, end
+    return degrees_l, degrees_r, end
 
 
 if __name__ == '__main__':
@@ -220,12 +226,12 @@ if __name__ == '__main__':
     cap = cv2.VideoCapture(args.video_path)
     i = 0
     # AARAV: Creating arrays for plots
-    x, y_l, y_r = [], [], []
+    x, yaw_l, yaw_r, pitch_l, pitch_r, roll_l, roll_r = [], [], [], [], [], [], []
     while True:
         # AARAV: Reading from video
         ret, image = cap.read()
         if ret:
-            if i > 700 :  #hjsong
+            if i >= 700 :  #hjsong
                 break
 
             print('Estimate gaze on frame number ', str(i))
@@ -240,14 +246,21 @@ if __name__ == '__main__':
                 _dist_coefficients, _camera_matrix = load_camera_calibration(args.calib_file)
             else:
                 im_width, im_height = image.shape[1], image.shape[0]
-                tqdm.write('WARNING!!! You should provide the camera calibration file, otherwise you might get bad results. Using a crude approximation!')
+                #tqdm.write('WARNING!!! You should provide the camera calibration file, otherwise you might get bad results. Using a crude approximation!')
                 _dist_coefficients, _camera_matrix = np.zeros((1, 5)), np.array(
                     [[im_height, 0.0, im_width / 2.0], [0.0, im_height, im_height / 2.0], [0.0, 0.0, 1.0]])
 
             dl, dr, end = estimate_gaze(str(i), image, _dist_coefficients, _camera_matrix)
             # AARAV: Adding degrees to their respective lists
-            y_l.append(dl)
-            y_r.append(dr)
+            yaw_l.append(dl[2])
+            yaw_r.append(dr[2])
+
+            pitch_l.append(dl[1])
+            pitch_r.append(dr[1])
+
+            roll_l.append(dl[0])
+            roll_r.append(dr[0])
+
             if end:
                 break
         else:
@@ -256,17 +269,32 @@ cv2.destroyAllWindows()
 
 #AARAV: Drawing using simple plots of matplotlib
 
+lst = []
+
+for i in range(len(yaw_l)): 
+    newLst = []
+    newLst.append(i+1)
+    newLst.append(yaw_l[i])
+    newLst.append(pitch_l[i])
+    newLst.append(roll_l[i])
+    lst.append(newLst)
+
+
+
+df = pd.DataFrame(lst, columns=['Frame #', 'Yaw', 'Pitch', 'Roll'])
+#print(df)
+df.to_csv('Gaze_Euler_Angles.csv', index=False)
 
 plt.figure()
-plt.plot(x, y_l)
+plt.plot(x, yaw_l)
 plt.xlabel("Frame number")
-plt.ylabel("Degrees")
+plt.ylabel("Degrees -- Yaw")
 plt.title("Left eye")  
 
 plt.figure()
-plt.plot(x, y_r)
+plt.plot(x, yaw_r)
 plt.xlabel("Frame number")
-plt.ylabel("Degrees")
+plt.ylabel("Degrees -- Yaw")
 plt.title("Right eye") 
 plt.show()
 

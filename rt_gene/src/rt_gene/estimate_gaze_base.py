@@ -64,7 +64,7 @@ class GazeEstimatorBase(object):
         #tqdm.write('__________-------------- Degree '+str(degree_angle))
 
         #hjsong  
-        tqdm.write('__________-------------- Gaze Degree (in theta pie) '+str(est_gaze) )
+        #tqdm.write('__________-------------- Gaze Degree (in theta pie) '+str(est_gaze) )
         theta = est_gaze[0]
         phi = est_gaze[1]
 
@@ -75,7 +75,7 @@ class GazeEstimatorBase(object):
         E_Degrees[1] = math.degrees(math.asin(math.sin(Degrees[1])))  #pitch
         E_Degrees[2] = math.degrees(math.asin(math.sin(Degrees[2])))  #yaw
 
-        tqdm.write('__________-------------- Gaze Degree (in euler angles) '+str(E_Degrees) )
+        #tqdm.write('__________-------------- Gaze Degree (in euler angles) '+str(E_Degrees) )
         #hjsong
 
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -86,4 +86,4 @@ class GazeEstimatorBase(object):
 
         #AARAV also return the degree
         #return output_image, degree_angle
-        return output_image, E_Degrees[2]  #hjsong  yaw  @Aarav, you can try others like E_Degrees[0], E_Degrees[1] to see if it does make a sense
+        return output_image, E_Degrees  #hjsong  yaw  @Aarav, you can try others like E_Degrees[0], E_Degrees[1] to see if it does make a sense
