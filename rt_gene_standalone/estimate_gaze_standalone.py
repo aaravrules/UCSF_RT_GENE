@@ -101,10 +101,12 @@ def estimate_gaze(base_name, color_img, dist_coefficients, camera_matrix):
 
 
         print ("pitch roll yaw " + f'{roll_pitch_yaw[1]:5.2f}' + "  " + f'{roll_pitch_yaw[0]:5.2f}' + " " + f'{roll_pitch_yaw[2]:5.2f}')  # pitch roll yaw
+       
         tmpList.append(base_name)
-        tmpList.append(roll_pitch_yaw[2])
-        tmpList.append(roll_pitch_yaw[1])
-        tmpList.append(roll_pitch_yaw[0])
+
+        tmpList.append(round(roll_pitch_yaw[2], 2) )
+        tmpList.append(round(roll_pitch_yaw[1], 2) )
+        tmpList.append(round(roll_pitch_yaw[0], 2) )
         yaw_pitch_roll_lst.append(tmpList)
 
          
